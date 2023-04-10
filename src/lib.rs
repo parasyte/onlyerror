@@ -137,6 +137,12 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 return Err(name);
             }
 
+            let display_fields = v
+                .display_fields
+                .iter()
+                .map(|field| format!("{field},"))
+                .collect::<String>();
+
             Ok(match &v.ty {
                 VariantType::Unit => format!("Self::{name} => write!(f, {display:?})?,"),
                 VariantType::Tuple => {
@@ -149,15 +155,13 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                             }
                         })
                         .collect::<String>();
-                    format!("Self::{name}({fields}) => write!(f, {display:?})?,")
+                    format!("Self::{name}({fields}) => write!(f, {display:?}, {display_fields})?,")
                 }
                 VariantType::Struct => {
-                    let display_fields = v
-                        .display_fields
-                        .iter()
-                        .map(|field| format!("{field},"))
-                        .collect::<String>();
-                    format!("Self::{name} {{ {display_fields} .. }} => write!(f, {display:?})?,")
+                    format!(
+                        "Self::{name} {{ {display_fields} .. }} => \
+                        write!(f, {display:?}, {display_fields})?,"
+                    )
                 }
             })
         })

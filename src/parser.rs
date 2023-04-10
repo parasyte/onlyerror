@@ -134,22 +134,28 @@ impl Variant {
         } else {
             get_doc_comment(&attrs).join("")
         };
-        if ty == VariantType::Tuple {
-            // Replace field references
-            for i in 0..fields.len() {
-                display = display
-                    .replace(&format!("{{{i}:"), &format!("{{field_{i}:"))
-                    .replace(&format!("{{{i}}}"), &format!("{{field_{i}}}"));
-            }
-        }
 
+        // Collect field references.
         let display_fields = display
             .split('{')
             .skip(1)
             .filter_map(|s| s.split('}').next())
             .filter_map(|s| s.split(':').next())
-            .map(Rc::from)
+            .map(|name| {
+                if ty == VariantType::Tuple {
+                    Rc::from(format!("field_{name}"))
+                } else {
+                    Rc::from(name)
+                }
+            })
             .collect();
+
+        // Remove field references from format string.
+        for field in &display_fields {
+            display = display
+                .replace(&format!("{{{field}:"), "{:")
+                .replace(&format!("{{{field}}}"), "{}");
+        }
 
         Ok(Self {
             name,
