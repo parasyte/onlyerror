@@ -13,3 +13,7 @@ Obsessively tiny error derive macro.
 - `no_std` support.
 - Fast compile times.
   - See [`myn` benchmark results](https://github.com/parasyte/myn/blob/main/benchmarks.md).
+
+## MSRV Policy
+
+The Minimum Supported Rust Version for `onlyerror` will always be made available in the [MSRV.md](./MSRV.md) file on GitHub.
