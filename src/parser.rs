@@ -134,7 +134,7 @@ impl Variant {
 
             if ty == VariantType::Tuple {
                 // Replace field references
-                for i in 0..20 {
+                for i in 0..fields.len() {
                     string = string
                         .replace(&format!("{{{i}:"), &format!("{{field_{i}:"))
                         .replace(&format!("{{{i}}}"), &format!("{{field_{i}}}"));

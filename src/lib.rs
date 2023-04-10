@@ -1,4 +1,4 @@
-//! `no_std`-compatible derive macro for [`Error`].
+//! `no_std`-compatible derive macro for [`std::error::Error`].
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]

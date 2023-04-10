@@ -12,6 +12,7 @@ license = "MIT"
 proc-macro = true
 
 [dependencies]
-error-iter = "0.4"
 myn = { git = "https://github.com/parasyte/myn.git", rev = "c86196dc061a2bea10363c9ed3fb7091a70e3984" }
 
+[dev-dependencies]
+error-iter = "0.4"
