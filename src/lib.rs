@@ -1,4 +1,80 @@
-//! `no_std`-compatible derive macro for [`std::error::Error`].
+//! `no_std`-compatible derive macro for error handling.
+//!
+//! `onlyerror` is comparable in feature set to the venerable [`thiserror`] crate with two major
+//! differences:
+//!
+//! 1. The feature subset is highly restricted.
+//! 2. Generally much faster compile times.
+//!
+//! For more on compile times, see the [`myn` benchmarks].
+//!
+//! # Example
+//!
+//! ```
+//! use onlyerror::Error;
+//!
+//! #[derive(Debug, Error)]
+//! pub enum HttpClientError {
+//!     /// I/O error.
+//!     Io(#[from] std::io::Error),
+//!
+//!     /// Login error.
+//!     #[error("Login error. Server message: `{0}`.")]
+//!     LoginError(String),
+//!
+//!     /// Invalid header.
+//!     #[error("Invalid header (expected {expected:?}, found {found:?}).")]
+//!     InvalidHeader {
+//!         expected: String,
+//!         found: String,
+//!     },
+//!
+//!     /// Unknown.
+//!     Unknown,
+//! }
+//! ```
+//!
+//! # DSL reference
+//!
+//! The macro has a DSL modeled after `thiserror`, so it should feel familiar to anyone who has used
+//! it.
+//!
+//! - The macro derives an implementation for the `Error` trait.
+//! - `Display` is derived using the `#[error("...")]` attributes with a fallback to doc comments.
+//! - `From` is derived for each `#[from]` or `#[source]` attribute.
+//!
+//! Error messages in `#[error("...")]` can reference enum variant fields by name (for struct-like
+//! variants) or by number (for tuple-like variants) using the [`std::fmt`] machinery.
+//!
+//! It is recommended to use `#[error("...")]` when you need interpolation, otherwise use doc
+//! comments. Doing this will keep implementation details out of your documentation while making
+//! the error variants self-documenting.
+//!
+//! # Limitations
+//!
+//! - Only `enum` types are supported by the [`Error`] macro.
+//! - Only inline string interpolations are supported by the derived `Display` impl.
+//! - Either all variants must be given an error message, or none.
+//!   - In the latter case, you must hand-implement `Display`. This is a constraint required by the
+//!     `Error` trait.
+//! - `From` impls are only derived for `#[from]` and `#[source]` attributes, not implicitly for any
+//!   field names.
+//! - `Backtrace` is not supported.
+//! - `#[error(transparent)]` is not supported.
+//!
+//! # Cargo features
+//!
+//! - `std` (default): use the [`std::error`] module.
+//!
+//! To use `onlyerror` in a `no_std` environment, disable default features in your Cargo manifest.
+//!
+//! As of writing, you must add `#![feature(error_in_core)]` to the top-level `lib.rs` or `main.rs`
+//! file to enable the [`core::error`] module. This feature flag is only available on nightly
+//! compilers.
+//!
+//! [`Error`]: derive@Error
+//! [`myn` benchmarks]: https://github.com/parasyte/myn/blob/main/benchmarks.md
+//! [`thiserror`]: https://docs.rs/thiserror
 
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
@@ -19,8 +95,13 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
         Err(err) => return err,
     };
 
+    #[cfg(feature = "std")]
+    let std_crate = "std";
+    #[cfg(not(feature = "std"))]
+    let std_crate = "core";
+
     let name = &ast.name;
-    let error_impl = ast
+    let error_matches = ast
         .variants
         .iter()
         .filter_map(|v| match &v.source {
@@ -45,14 +126,18 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
             ErrorSource::None => None,
         })
         .collect::<String>();
-    let display_impl = ast
+    let display = ast
         .variants
         .iter()
         .map(|v| {
             let name = &v.name;
             let display = &v.display;
 
-            match &v.ty {
+            if display.is_empty() {
+                return Err(name);
+            }
+
+            Ok(match &v.ty {
                 VariantType::Unit => format!("Self::{name} => write!(f, {display:?})?,"),
                 VariantType::Tuple => {
                     let fields = (0..v.fields.len())
@@ -74,9 +159,37 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                         .collect::<String>();
                     format!("Self::{name} {{ {display_fields} .. }} => write!(f, {display:?})?,")
                 }
-            }
+            })
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
+
+    let display_impl = if display.iter().any(Result::is_ok) {
+        let mut display_matches = String::new();
+        for res in display {
+            match res {
+                Err(name) => {
+                    return spanned_error("Required error message is missing", name.span());
+                }
+                Ok(msg) => display_matches.push_str(&msg),
+            }
+        }
+
+        format!(
+            r#"impl ::{std_crate}::fmt::Display for {name} {{
+                fn fmt(&self, f: &mut ::{std_crate}::fmt::Formatter<'_>) ->
+                    Result<(), ::{std_crate}::fmt::Error>
+                {{
+                    match self {{
+                        {display_matches}
+                    }}
+                    Ok(())
+                }}
+            }}"#
+        )
+    } else {
+        String::new()
+    };
+
     let from_impls = ast
         .variants
         .into_iter()
@@ -91,7 +204,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 };
 
                 Some(format!(
-                    r#"impl ::std::convert::From<{from_ty}> for {name} {{
+                    r#"impl ::{std_crate}::convert::From<{from_ty}> for {name} {{
                         fn from(value: {from_ty}) -> Self {{
                             {body}
                         }}
@@ -104,25 +217,16 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
 
     let code = TokenStream::from_str(&format!(
         r#"
-            impl ::std::error::Error for {name} {{
-                fn source(&self) -> Option<&(dyn ::std::error::Error + 'static)> {{
+            impl ::{std_crate}::error::Error for {name} {{
+                fn source(&self) -> Option<&(dyn ::{std_crate}::error::Error + 'static)> {{
                     match self {{
-                        {error_impl}
+                        {error_matches}
                         _ => None,
                     }}
                 }}
             }}
 
-            impl ::std::fmt::Display for {name} {{
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {{
-                    match self {{
-                        {display_impl}
-                        _ => (),
-                    }}
-                    Ok(())
-                }}
-            }}
-
+            {display_impl}
             {from_impls}
         "#
     ));

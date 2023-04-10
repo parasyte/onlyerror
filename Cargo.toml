@@ -8,6 +8,10 @@ keywords = ["error", "derive", "error-handling"]
 categories = ["no-std", "rust-patterns"]
 license = "MIT"
 
+[features]
+default = ["std"]
+std = []
+
 [lib]
 proc-macro = true
 

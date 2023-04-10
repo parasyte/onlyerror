@@ -125,26 +125,24 @@ impl Variant {
         };
 
         // #[error] attributes override doc comments
-        let display = if let Some(mut tree) = attrs
+        let mut display = if let Some(mut tree) = attrs
             .iter()
             .find_map(|attr| (attr.name.to_string() == "error").then_some(attr.tree.clone()))
             .and_then(|mut tree| tree.expect_group(Delimiter::Parenthesis).ok())
         {
-            let mut string = tree.as_lit()?.as_string()?;
-
-            if ty == VariantType::Tuple {
-                // Replace field references
-                for i in 0..fields.len() {
-                    string = string
-                        .replace(&format!("{{{i}:"), &format!("{{field_{i}:"))
-                        .replace(&format!("{{{i}}}"), &format!("{{field_{i}}}"));
-                }
-            }
-
-            string
+            tree.as_lit()?.as_string()?
         } else {
             get_doc_comment(&attrs).join("")
         };
+        if ty == VariantType::Tuple {
+            // Replace field references
+            for i in 0..fields.len() {
+                display = display
+                    .replace(&format!("{{{i}:"), &format!("{{field_{i}:"))
+                    .replace(&format!("{{{i}}}"), &format!("{{field_{i}}}"));
+            }
+        }
+
         let display_fields = display
             .split('{')
             .skip(1)
