@@ -11,7 +11,8 @@ checksum = "8070547d90d1b98debb6626421d742c897942bbb78f047694a5eb769495eccd6"
 [[package]]
 name = "myn"
 version = "0.1.0"
-source = "git+https://github.com/parasyte/myn.git?rev=c86196dc061a2bea10363c9ed3fb7091a70e3984#c86196dc061a2bea10363c9ed3fb7091a70e3984"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f950af707b8005ae33bb0f0b20cb32b09750e7375085606dc45b2f2078a34e52"
 
 [[package]]
 name = "onlyerror"
