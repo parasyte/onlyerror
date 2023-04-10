@@ -21,6 +21,7 @@ pub(crate) struct Variant {
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum VariantType {
+    Unit,
     Tuple,
     Struct,
 }
@@ -70,53 +71,58 @@ impl Variant {
     pub(crate) fn parse(input: &mut TokenIter) -> Result<Self, TokenStream> {
         let attrs = input.parse_attributes()?;
         let name = input.as_ident()?;
-        // TODO: Group is optional for unit variants.
-        let group = input.as_group()?;
-        let _ = input.expect_punct(',');
 
-        let (ty, map) = match group.delimiter() {
-            Delimiter::Parenthesis => (VariantType::Tuple, parse_tuple_fields(group.stream())?),
-            Delimiter::Brace => (VariantType::Struct, parse_struct_fields(group.stream())?),
-            _ => return Err(spanned_error("Unexpected delimiter", group.span())),
-        };
-
-        // Resolve error source.
         let mut fields = HashMap::new();
         let mut source = ErrorSource::None;
-        let num_fields = map.len();
-        for (key, field) in map.into_iter() {
-            let attrs = field
-                .attrs
-                .iter()
-                .filter(|attr| ["from", "source"].contains(&attr.name.to_string().as_str()));
+        let ty = if let Ok(group) = input.as_group() {
+            let (ty, map) = match group.delimiter() {
+                Delimiter::Parenthesis => (VariantType::Tuple, parse_tuple_fields(group.stream())?),
+                Delimiter::Brace => (VariantType::Struct, parse_struct_fields(group.stream())?),
+                _ => return Err(spanned_error("Unexpected delimiter", group.span())),
+            };
 
-            for attr in attrs {
-                // De-dupe.
-                if let Some(name) = source.as_ref() {
-                    let msg = format!(
-                        "#[from] | #[source] can only be used once. \
-                        Previously seen on field `{name}`"
-                    );
+            // Resolve error source.
+            let num_fields = map.len();
+            for (key, field) in map.into_iter() {
+                let attrs = field
+                    .attrs
+                    .iter()
+                    .filter(|attr| ["from", "source"].contains(&attr.name.to_string().as_str()));
 
-                    return Err(spanned_error(msg, attr.name.span()));
-                }
+                for attr in attrs {
+                    // De-dupe.
+                    if let Some(name) = source.as_ref() {
+                        let msg = format!(
+                            "#[from] | #[source] can only be used once. \
+                            Previously seen on field `{name}`"
+                        );
 
-                if attr.name.to_string() == "from" {
-                    if num_fields > 1 {
-                        return Err(spanned_error(
-                            "#[from] can only be used with a single field",
-                            name.span(),
-                        ));
+                        return Err(spanned_error(msg, attr.name.span()));
                     }
 
-                    source = ErrorSource::From(key.clone());
-                } else {
-                    source = ErrorSource::Source(key.clone());
+                    if attr.name.to_string() == "from" {
+                        if num_fields > 1 {
+                            return Err(spanned_error(
+                                "#[from] can only be used with a single field",
+                                name.span(),
+                            ));
+                        }
+
+                        source = ErrorSource::From(key.clone());
+                    } else {
+                        source = ErrorSource::Source(key.clone());
+                    }
                 }
+
+                fields.insert(key, field.path);
             }
 
-            fields.insert(key, field.path);
-        }
+            let _ = input.expect_punct(',');
+
+            ty
+        } else {
+            VariantType::Unit
+        };
 
         // #[error] attributes override doc comments
         let display = if let Some(mut tree) = attrs
@@ -124,7 +130,18 @@ impl Variant {
             .find_map(|attr| (attr.name.to_string() == "error").then_some(attr.tree.clone()))
             .and_then(|mut tree| tree.expect_group(Delimiter::Parenthesis).ok())
         {
-            tree.as_lit()?.as_string()?
+            let mut string = tree.as_lit()?.as_string()?;
+
+            if ty == VariantType::Tuple {
+                // Replace field references
+                for i in 0..20 {
+                    string = string
+                        .replace(&format!("{{{i}:"), &format!("{{field_{i}:"))
+                        .replace(&format!("{{{i}}}"), &format!("{{field_{i}}}"));
+                }
+            }
+
+            string
         } else {
             get_doc_comment(&attrs).join("")
         };

@@ -7,10 +7,11 @@
 use crate::parser::{Error, ErrorSource, VariantType};
 use myn::utils::spanned_error;
 use proc_macro::{Span, TokenStream};
-use std::str::FromStr as _;
+use std::{rc::Rc, str::FromStr as _};
 
 mod parser;
 
+#[allow(clippy::too_many_lines)]
 #[proc_macro_derive(Error, attributes(error, from, source))]
 pub fn derive_error(input: TokenStream) -> TokenStream {
     let ast = match Error::parse(input) {
@@ -26,12 +27,20 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
             ErrorSource::From(index) | ErrorSource::Source(index) => {
                 let name = &v.name;
 
-                if v.ty == VariantType::Tuple {
-                    // TODO: Support more than one field for #[source]
-                    Some(format!("Self::{name}(field) => Some(field),"))
-                } else {
-                    Some(format!("Self::{name} {{ {index}, ..}} => Some({index}),"))
-                }
+                Some(match &v.ty {
+                    VariantType::Unit => format!("Self::{name} => None,"),
+                    VariantType::Tuple => {
+                        let index_num: usize = index.parse().unwrap_or_default();
+                        let fields = (0..v.fields.len())
+                            .map(|i| if i == index_num { "field," } else { "_," })
+                            .collect::<String>();
+
+                        format!("Self::{name}({fields}) => Some(field),")
+                    }
+                    VariantType::Struct => {
+                        format!("Self::{name} {{ {index}, ..}} => Some({index}),")
+                    }
+                })
             }
             ErrorSource::None => None,
         })
@@ -42,17 +51,29 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
         .map(|v| {
             let name = &v.name;
             let display = &v.display;
-            let fields = v
-                .display_fields
-                .iter()
-                .map(|field| format!("{field},"))
-                .collect::<String>();
 
-            if v.ty == VariantType::Tuple {
-                // TODO: Support more than one field for #[source]
-                format!(r#"Self::{name}(_) => write!(f, {display:?})?,"#)
-            } else {
-                format!(r#"Self::{name} {{ {fields} .. }} => write!(f, {display:?})?,"#)
+            match &v.ty {
+                VariantType::Unit => format!("Self::{name} => write!(f, {display:?})?,"),
+                VariantType::Tuple => {
+                    let fields = (0..v.fields.len())
+                        .map(|i| {
+                            if v.display_fields.contains(&Rc::from(format!("field_{i}"))) {
+                                format!("field_{i},")
+                            } else {
+                                "_,".to_string()
+                            }
+                        })
+                        .collect::<String>();
+                    format!("Self::{name}({fields}) => write!(f, {display:?})?,")
+                }
+                VariantType::Struct => {
+                    let display_fields = v
+                        .display_fields
+                        .iter()
+                        .map(|field| format!("{field},"))
+                        .collect::<String>();
+                    format!("Self::{name} {{ {display_fields} .. }} => write!(f, {display:?})?,")
+                }
             }
         })
         .collect::<String>();
