@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Jay Oster <jay@kodewerx.org>"]
 repository = "https://github.com/parasyte/onlyerror"
 edition = "2021"
+rust-version = "1.62.0"
 keywords = ["error", "derive", "error-handling"]
 categories = ["no-std", "rust-patterns"]
 license = "MIT"
