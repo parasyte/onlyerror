@@ -121,6 +121,10 @@ impl Variant {
 
             ty
         } else {
+            // Unit variants can have an optional value.
+            let _ = input.as_punct();
+            let _ = input.as_lit();
+
             VariantType::Unit
         };
 
