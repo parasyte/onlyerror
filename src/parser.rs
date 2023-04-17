@@ -1,5 +1,5 @@
 use myn::prelude::*;
-use proc_macro::{Delimiter, Ident, TokenStream};
+use proc_macro::{Delimiter, Ident, TokenStream, TokenTree};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -122,8 +122,12 @@ impl Variant {
             ty
         } else {
             // Unit variants can have an optional value.
-            let _ = input.as_punct();
-            let _ = input.as_lit();
+            if let Some(tree) = input.peek() {
+                if matches!(tree, TokenTree::Literal(_) | TokenTree::Ident(_)) {
+                    input.next();
+                    input.expect_punct(',')?;
+                }
+            }
 
             VariantType::Unit
         };
