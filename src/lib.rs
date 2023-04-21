@@ -181,12 +181,12 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
         format!(
             r#"impl ::{std_crate}::fmt::Display for {name} {{
                 fn fmt(&self, f: &mut ::{std_crate}::fmt::Formatter<'_>) ->
-                    ::std::result::Result<(), ::{std_crate}::fmt::Error>
+                    ::{std_crate}::result::Result<(), ::{std_crate}::fmt::Error>
                 {{
                     match self {{
                         {display_matches}
                     }}
-                    ::std::result::Result::Ok(())
+                    ::{std_crate}::result::Result::Ok(())
                 }}
             }}"#
         )
