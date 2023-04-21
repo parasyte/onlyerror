@@ -79,6 +79,7 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
+#![allow(clippy::let_underscore_untyped)]
 
 use crate::parser::{Error, ErrorSource, VariantType};
 use myn::utils::spanned_error;
