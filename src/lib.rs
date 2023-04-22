@@ -145,7 +145,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 .collect::<String>();
 
             Ok(match &v.ty {
-                VariantType::Unit => format!("Self::{name} => write!(f, {display:?})?,"),
+                VariantType::Unit => format!("Self::{name} => write!(f, {display:?}),"),
                 VariantType::Tuple => {
                     let fields = (0..v.fields.len())
                         .map(|i| {
@@ -156,19 +156,19 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                             }
                         })
                         .collect::<String>();
-                    format!("Self::{name}({fields}) => write!(f, {display:?}, {display_fields})?,")
+                    format!("Self::{name}({fields}) => write!(f, {display:?}, {display_fields}),")
                 }
                 VariantType::Struct => {
                     format!(
                         "Self::{name} {{ {display_fields} .. }} => \
-                        write!(f, {display:?}, {display_fields})?,"
+                        write!(f, {display:?}, {display_fields}),"
                     )
                 }
             })
         })
         .collect::<Vec<_>>();
 
-    let display_impl = if display.iter().any(Result::is_ok) {
+    let display_impl = {
         let mut display_matches = String::new();
         for res in display {
             match res {
@@ -178,6 +178,9 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 Ok(msg) => display_matches.push_str(&msg),
             }
         }
+        display_matches.push_str(&format!(
+            "_ => unsafe {{ ::{std_crate}::hint::unreachable_unchecked()}}"
+        ));
 
         format!(
             r#"impl ::{std_crate}::fmt::Display for {name} {{
@@ -187,12 +190,9 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                     match self {{
                         {display_matches}
                     }}
-                    ::{std_crate}::result::Result::Ok(())
                 }}
             }}"#
         )
-    } else {
-        String::new()
     };
 
     let from_impls = ast
