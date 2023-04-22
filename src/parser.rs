@@ -74,7 +74,14 @@ impl Variant {
 
         let mut fields = HashMap::new();
         let mut source = ErrorSource::None;
-        let ty = if let Ok(group) = input.as_group() {
+        let group = if let Some(TokenTree::Group(group)) = input.peek() {
+            let group = group.clone();
+            input.next();
+            Some(group)
+        } else {
+            None
+        };
+        let ty = if let Some(group) = group {
             let (ty, map) = match group.delimiter() {
                 Delimiter::Parenthesis => (VariantType::Tuple, parse_tuple_fields(group.stream())?),
                 Delimiter::Brace => (VariantType::Struct, parse_struct_fields(group.stream())?),
@@ -121,14 +128,8 @@ impl Variant {
 
             ty
         } else {
-            // Unit variants can have an optional value.
-            if let Some(tree) = input.peek() {
-                if matches!(tree, TokenTree::Literal(_) | TokenTree::Ident(_)) {
-                    input.next();
-                    input.expect_punct(',')?;
-                }
-            }
-
+            // Skip everything before ','
+            while let Err(_) = input.expect_punct(',') {}
             VariantType::Unit
         };
 
