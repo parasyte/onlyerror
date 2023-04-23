@@ -7,6 +7,7 @@ use std::rc::Rc;
 pub(crate) struct Error {
     pub(crate) name: Ident,
     pub(crate) variants: Vec<Variant>,
+    pub(crate) no_display: bool,
 }
 
 #[derive(Debug)]
@@ -48,7 +49,7 @@ pub(crate) struct OrderedMap<T> {
 impl Error {
     pub(crate) fn parse(input: TokenStream) -> Result<Self, TokenStream> {
         let mut input = input.into_token_iter();
-        input.parse_attributes()?;
+        let attributes = input.parse_attributes()?;
         input.parse_visibility()?;
         input.expect_ident("enum")?;
         let name = input.as_ident()?;
@@ -61,7 +62,14 @@ impl Error {
         }
 
         match input.next() {
-            None => Ok(Self { name, variants }),
+            None => Ok(Self {
+                name,
+                variants,
+                no_display: attributes
+                    .into_iter()
+                    .find(|attr| attr.name.to_string() == "no_display")
+                    .is_some(),
+            }),
             tree => Err(spanned_error("Unexpected token", tree.as_span())),
         }
     }

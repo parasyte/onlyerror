@@ -89,7 +89,7 @@ use std::{rc::Rc, str::FromStr as _};
 mod parser;
 
 #[allow(clippy::too_many_lines)]
-#[proc_macro_derive(Error, attributes(error, from, source))]
+#[proc_macro_derive(Error, attributes(error, from, source, no_display))]
 pub fn derive_error(input: TokenStream) -> TokenStream {
     let ast = match Error::parse(input) {
         Ok(ast) => ast,
@@ -127,10 +127,11 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
             ErrorSource::None => None,
         })
         .collect::<String>();
-    let display = ast
-        .variants
-        .iter()
-        .map(|v| {
+
+    let display_impl = if ast.no_display {
+        String::new()
+    } else {
+        let display = ast.variants.iter().map(|v| {
             let name = &v.name;
             let display = &v.display;
 
@@ -165,10 +166,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                     )
                 }
             })
-        })
-        .collect::<Vec<_>>();
-
-    let display_impl = {
+        });
         let mut display_matches = String::new();
         for res in display {
             match res {
