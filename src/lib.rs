@@ -54,9 +54,8 @@
 //!
 //! - Only `enum` types are supported by the [`Error`] macro.
 //! - Only inline string interpolations are supported by the derived `Display` impl.
-//! - Either all variants must be given an error message, or none.
-//!   - In the latter case, you must hand-implement `Display`. This is a constraint required by the
-//!     `Error` trait.
+//! - Either all variants must be given an error message, or `#[no_display]` attribute must be set
+//!   to enum with hand-written `Display` implementation
 //! - `From` impls are only derived for `#[from]` and `#[source]` attributes, not implicitly for any
 //!   field names.
 //! - `Backtrace` is not supported.
