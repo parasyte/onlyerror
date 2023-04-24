@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug, onlyerror::Error)]
 #[no_display]
 enum Error {

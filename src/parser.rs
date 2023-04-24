@@ -67,8 +67,7 @@ impl Error {
                 variants,
                 no_display: attributes
                     .into_iter()
-                    .find(|attr| attr.name.to_string() == "no_display")
-                    .is_some(),
+                    .any(|attr| attr.name.to_string() == "no_display"),
             }),
             tree => Err(spanned_error("Unexpected token", tree.as_span())),
         }
@@ -137,7 +136,7 @@ impl Variant {
             ty
         } else {
             // Skip everything before ','
-            while let Err(_) = input.expect_punct(',') {}
+            while input.expect_punct(',').is_err() {}
             VariantType::Unit
         };
 
