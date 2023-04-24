@@ -7,4 +7,5 @@ error[E0277]: `Error` doesn't implement `std::fmt::Display`
   = help: the trait `std::fmt::Display` is not implemented for `Error`
   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 note: required by a bound in `std::error::Error`
+ --> $RUST/core/src/error.rs
   = note: this error originates in the derive macro `onlyerror::Error` (in Nightly builds, run with -Z macro-backtrace for more info)
