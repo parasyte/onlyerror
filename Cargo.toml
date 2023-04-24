@@ -26,4 +26,5 @@ myn = "0.1"
 
 [dev-dependencies]
 error-iter = "0.4"
+rustversion = "1.0.12"
 trybuild = "1.0.80"
