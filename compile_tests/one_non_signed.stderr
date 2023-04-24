@@ -1,0 +1,5 @@
+error: Required error message is missing
+ --> compile_tests/one_non_signed.rs:3:5
+  |
+3 |     One,
+  |     ^^^

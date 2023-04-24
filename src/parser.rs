@@ -7,6 +7,7 @@ use std::rc::Rc;
 pub(crate) struct Error {
     pub(crate) name: Ident,
     pub(crate) variants: Vec<Variant>,
+    pub(crate) no_display: bool,
 }
 
 #[derive(Debug)]
@@ -48,7 +49,7 @@ pub(crate) struct OrderedMap<T> {
 impl Error {
     pub(crate) fn parse(input: TokenStream) -> Result<Self, TokenStream> {
         let mut input = input.into_token_iter();
-        input.parse_attributes()?;
+        let attributes = input.parse_attributes()?;
         input.parse_visibility()?;
         input.expect_ident("enum")?;
         let name = input.as_ident()?;
@@ -61,7 +62,13 @@ impl Error {
         }
 
         match input.next() {
-            None => Ok(Self { name, variants }),
+            None => Ok(Self {
+                name,
+                variants,
+                no_display: attributes
+                    .into_iter()
+                    .any(|attr| attr.name.to_string() == "no_display"),
+            }),
             tree => Err(spanned_error("Unexpected token", tree.as_span())),
         }
     }
@@ -74,7 +81,14 @@ impl Variant {
 
         let mut fields = HashMap::new();
         let mut source = ErrorSource::None;
-        let ty = if let Ok(group) = input.as_group() {
+        let group = if let Some(TokenTree::Group(group)) = input.peek() {
+            let group = group.clone();
+            input.next();
+            Some(group)
+        } else {
+            None
+        };
+        let ty = if let Some(group) = group {
             let (ty, map) = match group.delimiter() {
                 Delimiter::Parenthesis => (VariantType::Tuple, parse_tuple_fields(group.stream())?),
                 Delimiter::Brace => (VariantType::Struct, parse_struct_fields(group.stream())?),
@@ -121,14 +135,8 @@ impl Variant {
 
             ty
         } else {
-            // Unit variants can have an optional value.
-            if let Some(tree) = input.peek() {
-                if matches!(tree, TokenTree::Literal(_) | TokenTree::Ident(_)) {
-                    input.next();
-                    input.expect_punct(',')?;
-                }
-            }
-
+            // Skip everything before ','
+            while input.expect_punct(',').is_err() {}
             VariantType::Unit
         };
 
