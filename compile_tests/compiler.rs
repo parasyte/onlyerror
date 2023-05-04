@@ -9,7 +9,7 @@ fn compile_tests() {
     t.compile_fail("compile_tests/multiple_non_signed.rs");
     t.compile_fail("compile_tests/multiple_one_non_signed.rs");
     t.pass("compile_tests/no_display.rs");
-    if rustversion::cfg!(since(1.68.0)) {
+    if rustversion::cfg!(all(stable, since(1.68.0))) {
         t.compile_fail("compile_tests/no_display_no_impl.rs");
     }
 }
