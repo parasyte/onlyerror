@@ -152,7 +152,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                             if v.display_fields.contains(&Rc::from(format!("field_{i}"))) {
                                 format!("field_{i},")
                             } else {
-                                "_,".to_string()
+                                String::from("_,")
                             }
                         })
                         .collect::<String>();
