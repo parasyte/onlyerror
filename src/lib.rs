@@ -152,7 +152,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                             if v.display_fields.contains(&Rc::from(format!("field_{i}"))) {
                                 format!("field_{i},")
                             } else {
-                                "_,".to_string()
+                                String::from("_,")
                             }
                         })
                         .collect::<String>();
@@ -175,18 +175,18 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 Ok(msg) => display_matches.push_str(&msg),
             }
         }
-        display_matches.push_str(&format!(
-            "_ => unsafe {{ ::{std_crate}::hint::unreachable_unchecked()}}"
-        ));
+        let display_matches = if display_matches.is_empty() {
+            String::from("Ok(())")
+        } else {
+            format!("match self {{ {display_matches} }}")
+        };
 
         format!(
             r#"impl ::{std_crate}::fmt::Display for {name} {{
                 fn fmt(&self, f: &mut ::{std_crate}::fmt::Formatter<'_>) ->
                     ::{std_crate}::result::Result<(), ::{std_crate}::fmt::Error>
                 {{
-                    match self {{
-                        {display_matches}
-                    }}
+                    {display_matches}
                 }}
             }}"#
         )
