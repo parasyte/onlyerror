@@ -52,7 +52,7 @@ impl Error {
         let attributes = input.parse_attributes()?;
         input.parse_visibility()?;
         input.expect_ident("enum")?;
-        let name = input.as_ident()?;
+        let name = input.try_ident()?;
 
         let mut content = input.expect_group(Delimiter::Brace)?;
         let mut variants = vec![];
@@ -77,7 +77,7 @@ impl Error {
 impl Variant {
     pub(crate) fn parse(input: &mut TokenIter) -> Result<Self, TokenStream> {
         let attrs = input.parse_attributes()?;
-        let name = input.as_ident()?;
+        let name = input.try_ident()?;
 
         let mut fields = HashMap::new();
         let mut source = ErrorSource::None;
@@ -146,10 +146,12 @@ impl Variant {
             .find_map(|attr| (attr.name.to_string() == "error").then_some(attr.tree.clone()))
             .and_then(|mut tree| tree.expect_group(Delimiter::Parenthesis).ok())
         {
-            tree.as_lit()?.as_string()?
+            tree.try_lit()?.as_string()?
         } else {
             get_doc_comment(&attrs).join("")
-        };
+        }
+        .trim()
+        .to_string();
 
         // Collect field references.
         let display_fields = display
@@ -220,7 +222,7 @@ fn parse_struct_fields(input: TokenStream) -> Result<OrderedMap<Field>, TokenStr
 
 fn parse_struct_field(input: &mut TokenIter) -> Result<(String, Field), TokenStream> {
     let attrs = input.parse_attributes()?;
-    let name = input.as_ident()?;
+    let name = input.try_ident()?;
     input.expect_punct(':')?;
     let (path, _) = input.parse_path()?;
     let _ = input.expect_punct(',');
