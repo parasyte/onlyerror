@@ -83,7 +83,7 @@
 use crate::parser::{Error, ErrorSource, VariantType};
 use myn::utils::spanned_error;
 use proc_macro::{Span, TokenStream};
-use std::{rc::Rc, str::FromStr as _};
+use std::{fmt::Write as _, rc::Rc, str::FromStr as _};
 
 mod parser;
 
@@ -138,11 +138,13 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 return Err(name);
             }
 
-            let display_fields = v
-                .display_fields
-                .iter()
-                .map(|field| format!("{field},"))
-                .collect::<String>();
+            let display_fields =
+                v.display_fields
+                    .iter()
+                    .fold(String::new(), |mut fields, field| {
+                        write!(fields, "{field},").unwrap();
+                        fields
+                    });
 
             Ok(match &v.ty {
                 VariantType::Unit => format!("Self::{name} => write!(f, {display:?}),"),

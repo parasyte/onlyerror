@@ -22,7 +22,7 @@ name = "compile_and_fail"
 path = "compile_tests/compiler.rs"
 
 [dependencies]
-myn = "0.1"
+myn = "0.2"
 
 [dev-dependencies]
 error-iter = "0.4"
