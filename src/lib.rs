@@ -149,15 +149,14 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
             Ok(match &v.ty {
                 VariantType::Unit => format!("Self::{name} => write!(f, {display:?}),"),
                 VariantType::Tuple => {
-                    let fields = (0..v.fields.len())
-                        .map(|i| {
-                            if v.display_fields.contains(&Rc::from(format!("field_{i}"))) {
-                                format!("field_{i},")
-                            } else {
-                                String::from("_,")
-                            }
-                        })
-                        .collect::<String>();
+                    let fields = (0..v.fields.len()).fold(String::new(), |mut fields, i| {
+                        if v.display_fields.contains(&Rc::from(format!("field_{i}"))) {
+                            let _ = write!(fields, "field_{i},");
+                        } else {
+                            let _ = fields.write_str("_,");
+                        }
+                        fields
+                    });
                     format!("Self::{name}({fields}) => write!(f, {display:?}, {display_fields}),")
                 }
                 VariantType::Struct => {
