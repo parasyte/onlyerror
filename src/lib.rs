@@ -142,7 +142,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 v.display_fields
                     .iter()
                     .fold(String::new(), |mut fields, field| {
-                        write!(fields, "{field},").unwrap();
+                        let _ = write!(fields, "{field},");
                         fields
                     });
 
