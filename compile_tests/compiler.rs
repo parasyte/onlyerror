@@ -12,4 +12,5 @@ fn compile_tests() {
     if rustversion::cfg!(all(stable, since(1.68.0))) {
         t.compile_fail("compile_tests/no_display_no_impl.rs");
     }
+    t.pass("compile_tests/skip_positional.rs");
 }

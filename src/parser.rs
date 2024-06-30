@@ -154,7 +154,7 @@ impl Variant {
         .to_string();
 
         // Collect field references.
-        let display_fields = display
+        let display_fields: Vec<Rc<str>> = display
             .split('{')
             .skip(1)
             .filter_map(|s| s.split('}').next())
@@ -170,6 +170,16 @@ impl Variant {
 
         // Remove field references from format string.
         for field in &display_fields {
+            // Special case for tuples
+            if ty == VariantType::Tuple {
+                if let Some(num) = field.strip_prefix("field_") {
+                    display = display
+                        .replace(&format!("{{{num}:"), "{:")
+                        .replace(&format!("{{{num}}}"), "{}");
+                    continue;
+                }
+            }
+
             display = display
                 .replace(&format!("{{{field}:"), "{:")
                 .replace(&format!("{{{field}}}"), "{}");
