@@ -1,11 +1,11 @@
 [package]
 name = "onlyerror"
 description = "Obsessively tiny error derive macro"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Jay Oster <jay@kodewerx.org>"]
 repository = "https://github.com/parasyte/onlyerror"
 edition = "2021"
-rust-version = "1.62.0"
+rust-version = "1.70.0"
 keywords = ["error", "derive", "error-handling"]
 categories = ["no-std", "rust-patterns"]
 license = "MIT"
