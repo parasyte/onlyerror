@@ -183,13 +183,13 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
         };
 
         format!(
-            r#"impl ::{std_crate}::fmt::Display for {name} {{
+            r"impl ::{std_crate}::fmt::Display for {name} {{
                 fn fmt(&self, f: &mut ::{std_crate}::fmt::Formatter<'_>) ->
                     ::{std_crate}::result::Result<(), ::{std_crate}::fmt::Error>
                 {{
                     {display_matches}
                 }}
-            }}"#
+            }}"
         )
     };
 
@@ -201,17 +201,17 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
                 let variant_name = v.name;
                 let from_ty = &v.fields[&index];
                 let body = if v.ty == VariantType::Tuple {
-                    format!(r#"Self::{variant_name}(value)"#)
+                    format!(r"Self::{variant_name}(value)")
                 } else {
-                    format!(r#"Self::{variant_name} {{ {index}: value }}"#)
+                    format!(r"Self::{variant_name} {{ {index}: value }}")
                 };
 
                 Some(format!(
-                    r#"impl ::{std_crate}::convert::From<{from_ty}> for {name} {{
+                    r"impl ::{std_crate}::convert::From<{from_ty}> for {name} {{
                         fn from(value: {from_ty}) -> Self {{
                             {body}
                         }}
-                    }}"#
+                    }}"
                 ))
             }
             _ => None,
@@ -219,7 +219,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
         .collect::<String>();
 
     let code = TokenStream::from_str(&format!(
-        r#"
+        r"
             impl ::{std_crate}::error::Error for {name} {{
                 fn source(&self) -> Option<&(dyn ::{std_crate}::error::Error + 'static)> {{
                     match self {{
@@ -231,7 +231,7 @@ pub fn derive_error(input: TokenStream) -> TokenStream {
 
             {display_impl}
             {from_impls}
-        "#
+        "
     ));
 
     match code {
